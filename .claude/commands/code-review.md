@@ -34,6 +34,8 @@ Rules:
 - Do NOT edit any files yet.
 - Do NOT run formatting-only changes unless they fix a cited issue.
 
+Language = Thai
+
 Finish by asking:
 "Do you want me to implement the action plan now?"
 
