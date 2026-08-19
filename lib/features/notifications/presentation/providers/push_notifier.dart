@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,13 +14,25 @@ part 'push_notifier.g.dart';
 /// SnackBar (Android only shows a system-tray notification automatically
 /// when the app is backgrounded/terminated — a foreground app has to
 /// display it itself, hence the SnackBar here).
-@riverpod
+///
+/// Kept alive for the lifetime of the app (`keepAlive: true`): nothing
+/// ever `watch`es/`listen`s this provider, only `ref.read`s it, so as a
+/// plain autoDispose provider it would be torn down right after
+/// `initialize()` returns — while its `onTokenRefresh`/`onMessage`
+/// subscriptions are still live and would call back into a disposed `ref`.
+@Riverpod(keepAlive: true)
 class PushNotifier extends _$PushNotifier {
   String? _registeredToken;
+  StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
 
   @override
   void build() {
-    ref.onDispose(() => _registeredToken = null);
+    ref.onDispose(() {
+      _tokenRefreshSub?.cancel();
+      _onMessageSub?.cancel();
+      _registeredToken = null;
+    });
   }
 
   Future<void> initialize() async {
@@ -35,10 +49,10 @@ class PushNotifier extends _$PushNotifier {
     }
 
     // The OS can rotate the token (app reinstall, backup restore, etc.) —
-    // keep the backend's copy in sync whenever that happens.
-    FirebaseMessaging.instance.onTokenRefresh.listen(_register);
-
-    FirebaseMessaging.onMessage.listen(_showForegroundMessage);
+    // keep the backend's copy in sync whenever that happens. Guarded so a
+    // second `initialize()` call (e.g. re-sign-in) doesn't stack listeners.
+    _tokenRefreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen(_register);
+    _onMessageSub ??= FirebaseMessaging.onMessage.listen(_showForegroundMessage);
   }
 
   Future<void> _register(String token) async {

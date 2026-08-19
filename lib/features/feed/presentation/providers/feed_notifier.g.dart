@@ -39,7 +39,7 @@ final class FeedNotifierProvider
   FeedNotifier create() => FeedNotifier();
 }
 
-String _$feedNotifierHash() => r'670fde8898fe315443ad55b52d2f73591675dfa4';
+String _$feedNotifierHash() => r'e07d7db55a21a2e5915925d6c837c89553a82b95';
 
 /// The main feed — everyone's posts, newest first. Adds `createPost` on
 /// top of the shared like/edit/delete logic in `shared/providers`.

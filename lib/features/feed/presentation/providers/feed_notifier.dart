@@ -38,43 +38,40 @@ class FeedNotifier extends _$FeedNotifier {
     }
   }
 
-  Future<void> toggleLike(Post post) async {
+  Future<void> toggleLike(Post post) {
     final current = state.value;
-    if (current == null) return;
-    final repo = ref.read(postRepositoryProvider);
-    state = AsyncData(current.copyWith(posts: applyOptimisticLike(current.posts, post)));
-    try {
-      final result = await repo.toggleLike(post.id);
-      final latest = state.value ?? current;
-      state = AsyncData(latest.copyWith(posts: applyLikeResult(latest.posts, post.id, result)));
-    } catch (_) {
-      state = AsyncData(current);
-    }
+    if (current == null) return Future.value();
+    return toggleLikeInList(
+      current: current,
+      repo: ref.read(postRepositoryProvider),
+      post: post,
+      readState: () => state.value ?? current,
+      setState: (s) => state = AsyncData(s),
+    );
   }
 
-  Future<bool> editPost(int id, {String? content, File? imageFile, bool removeImage = false}) async {
+  Future<bool> editPost(int id, {String? content, File? imageFile, bool removeImage = false}) {
     final current = state.value;
-    if (current == null) return false;
-    try {
-      final updated = await ref
-          .read(postRepositoryProvider)
-          .editPost(id, content: content, imageFile: imageFile, removeImage: removeImage);
-      state = AsyncData(current.copyWith(posts: replacePost(current.posts, updated)));
-      return true;
-    } catch (e) {
-      state = AsyncData(current.copyWith(error: e is ApiException ? e.message : 'Failed to update post'));
-      return false;
-    }
+    if (current == null) return Future.value(false);
+    return editPostInList(
+      current: current,
+      repo: ref.read(postRepositoryProvider),
+      id: id,
+      content: content,
+      imageFile: imageFile,
+      removeImage: removeImage,
+      setState: (s) => state = AsyncData(s),
+    );
   }
 
-  Future<void> deletePost(int id) async {
+  Future<void> deletePost(int id) {
     final current = state.value;
-    if (current == null) return;
-    state = AsyncData(current.copyWith(posts: removePost(current.posts, id)));
-    try {
-      await ref.read(postRepositoryProvider).deletePost(id);
-    } catch (e) {
-      state = AsyncData(current.copyWith(error: e is ApiException ? e.message : 'Failed to delete post'));
-    }
+    if (current == null) return Future.value();
+    return deletePostInList(
+      current: current,
+      repo: ref.read(postRepositoryProvider),
+      id: id,
+      setState: (s) => state = AsyncData(s),
+    );
   }
 }

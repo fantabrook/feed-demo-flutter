@@ -11,7 +11,8 @@ import 'package:feed_demo_flutter/shared/widgets/post_card.dart';
 import '../providers/profile_notifier.dart';
 
 /// Profile tab — the signed-in user's own posts, plus account actions
-/// (theme, sign out).
+/// (theme, sign out). Account actions stay reachable even if the post
+/// list fails to load — only the "My posts" section reflects that error.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -25,64 +26,80 @@ class ProfileScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider).value;
     final profileAsync = ref.watch(profileProvider);
     final themeMode = ref.watch(themeProvider).value ?? ThemeMode.system;
+    final postCount = profileAsync.value?.posts.length ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: RefreshIndicator(
         onRefresh: () => _refresh(ref),
-        child: profileAsync.when(
-          data: (profile) => _buildContent(context, ref, profile, auth, themeMode),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('$error')),
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: [
+            _ProfileHeader(name: auth?.name ?? '', email: auth?.email ?? '', postCount: postCount),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Appearance', style: Theme.of(context).textTheme.titleSmall),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto)),
+                  ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode)),
+                  ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode)),
+                ],
+                selected: {themeMode},
+                onSelectionChanged: (selection) => ref.read(themeProvider.notifier).setMode(selection.first),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  // Stop pushes for this account before dropping the session
+                  // that authorizes removing the token.
+                  await ref.read(pushProvider.notifier).unregister();
+                  await ref.read(authProvider.notifier).signOut();
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Sign out'),
+              ),
+            ),
+            const Divider(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('My posts', style: Theme.of(context).textTheme.titleSmall),
+            ),
+            const SizedBox(height: 8),
+            _buildPostsSection(context, ref, profileAsync, auth),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, PostListState profile, AppUser? auth, ThemeMode themeMode) {
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 32),
-      children: [
-        _ProfileHeader(name: auth?.name ?? '', email: auth?.email ?? '', postCount: profile.posts.length),
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text('Appearance', style: Theme.of(context).textTheme.titleSmall),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto)),
-              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode)),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode)),
+  Widget _buildPostsSection(BuildContext context, WidgetRef ref, AsyncValue<PostListState> profileAsync, AppUser? auth) {
+    return profileAsync.when(
+      data: (profile) => _buildPosts(context, ref, profile, auth),
+      loading: () => const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$error'),
+              const SizedBox(height: 8),
+              OutlinedButton(onPressed: () => _refresh(ref), child: const Text('Retry')),
             ],
-            selected: {themeMode},
-            onSelectionChanged: (selection) => ref.read(themeProvider.notifier).setMode(selection.first),
           ),
         ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: OutlinedButton.icon(
-            onPressed: () async {
-              // Stop pushes for this account before dropping the session
-              // that authorizes removing the token.
-              await ref.read(pushProvider.notifier).unregister();
-              await ref.read(authProvider.notifier).signOut();
-            },
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
-          ),
-        ),
-        const Divider(height: 32),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('My posts', style: Theme.of(context).textTheme.titleSmall),
-        ),
-        const SizedBox(height: 8),
-        _buildPosts(context, ref, profile, auth),
-      ],
+      ),
     );
   }
 

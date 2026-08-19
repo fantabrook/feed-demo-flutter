@@ -8,17 +8,15 @@ import '../../data/repositories/notifications_repository_impl.dart';
 part 'notifications_notifier.g.dart';
 
 class NotificationsState {
-  const NotificationsState({this.notifications = const [], this.unreadCount = 0, this.error});
+  const NotificationsState({this.notifications = const [], this.unreadCount = 0});
 
   final List<AppNotification> notifications;
   final int unreadCount;
-  final String? error;
 
-  NotificationsState copyWith({List<AppNotification>? notifications, int? unreadCount, String? error}) {
+  NotificationsState copyWith({List<AppNotification>? notifications, int? unreadCount}) {
     return NotificationsState(
       notifications: notifications ?? this.notifications,
       unreadCount: unreadCount ?? this.unreadCount,
-      error: error,
     );
   }
 }

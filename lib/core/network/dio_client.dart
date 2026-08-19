@@ -19,7 +19,16 @@ String get apiBaseUrl {
 
 @riverpod
 Dio dio(Ref ref) {
-  final dio = Dio(BaseOptions(baseUrl: apiBaseUrl));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: apiBaseUrl,
+      // Bound every request so a hung connection (or a failed token read
+      // in the auth interceptor) can't stall the UI forever.
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      sendTimeout: const Duration(seconds: 15),
+    ),
+  );
   dio.interceptors.add(AuthInterceptor(ref.watch(tokenStorageProvider)));
   dio.interceptors.add(ErrorInterceptor());
   return dio;

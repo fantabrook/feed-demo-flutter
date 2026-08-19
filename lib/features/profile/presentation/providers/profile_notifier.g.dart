@@ -42,7 +42,7 @@ final class ProfileNotifierProvider
   ProfileNotifier create() => ProfileNotifier();
 }
 
-String _$profileNotifierHash() => r'ac6d632354ec134c9b66c777f89de0067c964a24';
+String _$profileNotifierHash() => r'21d5e8149c417d7f4a7637344eeecc38621243fb';
 
 /// The signed-in user's own posts — backs the Profile tab. Same
 /// like/edit/delete behavior as the feed (via the shared `PostRepository`),

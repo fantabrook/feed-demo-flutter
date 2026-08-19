@@ -8,15 +8,25 @@ import 'api_exception.dart';
 class ErrorInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final data = err.response?.data;
+    final response = err.response;
+    if (response == null) {
+      // Connection/timeout error — there's no server response to parse a
+      // message out of. Pass it through unmodified so `mapDioError()`
+      // falls back to its generic message instead of a misleading
+      // "Request failed (-)".
+      handler.next(err);
+      return;
+    }
+
+    final data = response.data;
     final message = (data is Map && data['error'] is String)
         ? data['error'] as String
-        : 'Request failed (${err.response?.statusCode ?? '-'})';
+        : 'Request failed (${response.statusCode})';
 
     handler.reject(
       DioException(
         requestOptions: err.requestOptions,
-        response: err.response,
+        response: response,
         type: err.type,
         error: ApiException(message),
       ),
